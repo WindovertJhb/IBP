@@ -143,9 +143,21 @@ function setupJobSearch () {
 
 function matchesJobSearch (booking) {
   if (!jobSearchQuery) return true
+
   const q = jobSearchQuery.toLowerCase()
   const name = String(booking?.customerName || '').toLowerCase()
-  return name.includes(q)
+  const orderNumbers = String(booking?.orderNumbers || '').toLowerCase()
+  if (name.includes(q) || orderNumbers.includes(q)) return true
+
+  // Phone numbers get typed with all sorts of spacing/dashes, so compare
+  // digits-only rather than requiring an exact-format substring match.
+  const qDigits = jobSearchQuery.replace(/\D/g, '')
+  if (qDigits) {
+    const phoneDigits = String(booking?.clientPhone || '').replace(/\D/g, '')
+    if (phoneDigits.includes(qDigits)) return true
+  }
+
+  return false
 }
 
 function isoToDateMs (iso) {
