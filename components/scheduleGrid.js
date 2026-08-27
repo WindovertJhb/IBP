@@ -393,6 +393,7 @@ function renderGrid () {
                 rowspan="${cell.rowSpan}"
             >
                 <div class="booking-block ${cssClass}" data-booking-id="${b.id}">
+                ${b.productsArrived ? '<div class="booking-arrived-badge" title="Products arrived in store">📦</div>' : ''}
                 <div class="booking-line-time">${slotTime}</div>
                 <div class="booking-line-customer">${escapeHtml(customerLabel)}</div>
                 ${metaLine ? `<div class="booking-line-meta">${escapeHtml(metaLine)}</div>` : ''}
@@ -994,6 +995,7 @@ function setupModalHandlers () {
     const salespersonSelect = document.getElementById('booking-salesperson')
     const crewContainer = document.getElementById('booking-crew')
     const productsContainer = document.getElementById('booking-products')
+    const productsArrivedInput = document.getElementById('booking-products-arrived')
     const errorEl = document.getElementById('booking-error')
 
     const rawDuration = durationInput.value.replace(',', '.')
@@ -1033,7 +1035,8 @@ function setupModalHandlers () {
       orderNumbers: orderInput ? orderInput.value.trim() : '',
       salesperson_id: salespersonSelect ? (salespersonSelect.value || null) : null,
       crew,
-      products: productsPayload
+      products: productsPayload,
+      productsArrived: productsArrivedInput ? productsArrivedInput.checked : false
     }
 
     if (!fitsInDay(payload)) {
@@ -1106,6 +1109,7 @@ function openModalForNew (dateISO, teamId, startTime) {
   const emailInput = document.getElementById('booking-email')
   const orderInput = document.getElementById('booking-orderNumbers')
   const salespersonSelect = document.getElementById('booking-salesperson')
+  const productsArrivedInput = document.getElementById('booking-products-arrived')
 
   if (idInput) idInput.value = ''
   if (deleteBtn) deleteBtn.classList.add('d-none')
@@ -1123,6 +1127,7 @@ function openModalForNew (dateISO, teamId, startTime) {
   if (emailInput) emailInput.value = ''
   if (orderInput) orderInput.value = ''
   if (salespersonSelect) salespersonSelect.value = ''
+  if (productsArrivedInput) productsArrivedInput.checked = false
 
   renderCrewAndProducts(null)
 
@@ -1147,6 +1152,7 @@ function openModalForEdit (booking) {
   const emailInput = document.getElementById('booking-email')
   const orderInput = document.getElementById('booking-orderNumbers')
   const salespersonSelect = document.getElementById('booking-salesperson')
+  const productsArrivedInput = document.getElementById('booking-products-arrived')
 
   if (idInput) idInput.value = booking.id
   if (deleteBtn) deleteBtn.classList.remove('d-none')
@@ -1167,6 +1173,7 @@ function openModalForEdit (booking) {
     const sp = booking.salesperson_id
     salespersonSelect.value = sp != null ? String(sp) : ''
   }
+  if (productsArrivedInput) productsArrivedInput.checked = !!booking.productsArrived
 
   renderCrewAndProducts(booking)
 
