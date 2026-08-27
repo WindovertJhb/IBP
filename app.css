@@ -1,0 +1,317 @@
+/* ===========================
+   Basic layout / shared bits
+   =========================== */
+
+.people-role-badge {
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+/* ===========================
+   Schedule toolbar / header
+   =========================== */
+
+.schedule-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  z-index: 1020;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.schedule-week-label {
+  font-weight: 600;
+  font-size: 1.15rem;
+  margin: 0 1rem;
+}
+
+.schedule-grid-container {
+  margin-top: 1rem;
+}
+
+.day-section .day-header {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+/* ===========================
+   Schedule grid (day / week)
+   =========================== */
+
+.schedule-grid {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.8rem;
+  table-layout: fixed;
+}
+
+.schedule-grid th,
+.schedule-grid td {
+  border: 1px solid #dee2e6;
+  padding: 0.15rem 0.25rem;
+  vertical-align: top;
+  position: relative;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-grid thead th {
+  background-color: #f8f9fa;
+  text-align: center;
+  font-weight: 600;
+}
+
+.time-col {
+  width: 60px;
+}
+
+.time-cell {
+  white-space: nowrap;
+  background-color: #f8f9fa;
+  text-align: right;
+  padding-right: 0.5rem;
+}
+
+.mechanic-col {
+  min-width: 120px;
+}
+
+.schedule-slot {
+  height: 26px;
+  cursor: pointer;
+  position: relative;
+}
+
+.schedule-slot.drop-target {
+  outline: 2px dashed rgba(0, 123, 255, 0.6);
+  outline-offset: -2px;
+  background-color: rgba(0, 123, 255, 0.05);
+  z-index: 10;
+}
+
+/* ===========================
+   Booking blocks (in-grid)
+   =========================== */
+
+.booking-block {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  font-size: 0.75rem;
+  padding: 2px 4px;
+  border-radius: 4px;
+  overflow: hidden;
+  white-space: normal;
+  cursor: grab;
+}
+
+.booking-line-time {
+  font-weight: 700;
+  font-size: 0.8rem;
+  line-height: 1.1;
+}
+
+.booking-line-customer {
+  font-weight: 600;
+  font-size: 0.8rem;
+  line-height: 1.2;
+}
+
+.booking-line-meta {
+  font-size: 0.72rem;
+  line-height: 1.2;
+  opacity: 0.95;
+}
+
+.booking-block.dragging {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.booking-drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 2000;
+  opacity: 0.9;
+}
+
+.booking-resize-handle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 8px;
+  cursor: ns-resize;
+  background-color: rgba(0, 0, 0, 0.15);
+}
+
+.booking-block.resizing {
+  opacity: 0.5;
+}
+
+.booking-resize-ghost {
+  opacity: 0.4;
+  border: 2px dashed #000;
+  z-index: 9999;
+}
+
+/* ===========================
+   Booking type colours
+   =========================== */
+
+.booking-service-pro {
+  background-color: #0d6efd;
+  color: #fff;
+}
+
+.booking-service-major {
+  background-color: #0dcaf0;
+  color: #000;
+}
+
+.booking-service-expert {
+  background-color: #20c997;
+  color: #000;
+}
+
+.booking-service-min {
+  background-color: #ffc107;
+  color: #000;
+}
+
+.booking-service-transit {
+  background-color: #6c757d;
+  color: #fff;
+}
+
+/* ===========================
+   Legend styling
+   =========================== */
+
+.schedule-legend span {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 1rem;
+  font-size: 0.8rem;
+}
+
+.schedule-legend .legend-color {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  margin-right: 6px;
+}
+
+/* ===========================
+   Booking modal extras
+   =========================== */
+
+.booking-products .booking-product-row:last-child {
+  margin-bottom: 0;
+}
+
+.booking-crew-list .form-check {
+  margin-bottom: 0.25rem;
+}
+
+/* ===========================
+   Print styles (job cards)
+   =========================== */
+
+.print-area {
+  display: none;
+  padding: 1.5rem;
+  background: #fff;
+  color: #000;
+  font-size: 0.85rem;
+}
+
+.print-day-header {
+  margin-bottom: 1rem;
+}
+
+.print-day-header h1 {
+  font-size: 1.4rem;
+  margin-bottom: 0.25rem;
+}
+
+.print-day-header .small {
+  font-size: 0.8rem;
+  color: #555;
+}
+
+.print-team-page {
+  page-break-after: always;
+  padding-top: 0.75rem;
+  border-top: 1px solid #ccc;
+}
+
+.print-team-header {
+  margin-bottom: 0.5rem;
+}
+
+.print-team-header h2 {
+  font-size: 1.1rem;
+  margin-bottom: 0.25rem;
+}
+
+.print-team-header .small {
+  font-size: 0.8rem;
+  color: #555;
+}
+
+.print-jobcard {
+  border: 1px solid #ddd;
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  margin-top: 0.6rem;
+}
+
+.print-jobcard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.3rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.print-jobcard-header span {
+  font-weight: normal;
+  font-size: 0.8rem;
+}
+
+.print-jobcard-row {
+  display: flex;
+  font-size: 0.8rem;
+}
+
+.print-jobcard-label {
+  width: 80px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.print-jobcard-value {
+  flex: 1;
+}
+
+/* Hide app UI when printing, show print sheet instead */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .print-area {
+    display: block !important;
+  }
+
+  body {
+    background: #fff;
+  }
+}
