@@ -115,7 +115,6 @@ function bookingToRow (b) {
     order_numbers: b.orderNumbers,
     crew: b.crew ?? [],
     products: b.products ?? [],
-    products_arrived: b.productsArrived ?? false,
     salesperson_id: b.salesperson_id ?? null
   }
 }
@@ -142,7 +141,6 @@ function rowToBooking (r) {
     orderNumbers: r.order_numbers,
     crew: r.crew ?? [],
     products: r.products ?? [],
-    productsArrived: r.products_arrived ?? false,
     salesperson_id: r.salesperson_id ?? null
   }
 }

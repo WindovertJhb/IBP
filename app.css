@@ -132,17 +132,6 @@
   pointer-events: none;
 }
 
-/* Small badge showing products have arrived in store — needs to read
-   clearly regardless of which job-type colour the block is using. */
-.booking-arrived-badge {
-  position: absolute;
-  top: 1px;
-  right: 3px;
-  font-size: 0.85rem;
-  line-height: 1;
-  filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.7));
-}
-
 .booking-drag-ghost {
   position: fixed;
   pointer-events: none;

@@ -57,7 +57,6 @@ create table bookings (
   order_numbers text,
   crew uuid[] not null default '{}',
   products jsonb not null default '[]',
-  products_arrived boolean not null default false,
   salesperson_id uuid references people(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
