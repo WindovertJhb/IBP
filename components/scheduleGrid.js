@@ -16,9 +16,13 @@ let products = []
 let viewMode = 'day'
 let currentDate = new Date()
 
-// job search (filters jobs by customer name and sorts results by closest date to today)
+// job search (filters jobs by customer name, order number or phone, and
+// sorts results by closest date to today). It has to search across every
+// booking, not just the currently displayed week, so it keeps its own
+// unscoped copy of the data separate from `bookings` above.
 let jobSearchQuery = ''
 let pendingOpenBookingId = null
+let searchPoolPromise = null
 
 let scheduleGridContainer
 let labelEl
@@ -49,6 +53,7 @@ export function initScheduleGrid () {
   window.addEventListener('bookingsUpdated', refreshData)
   window.addEventListener('peopleUpdated', refreshData)
   window.addEventListener('productsUpdated', refreshData)
+  window.addEventListener('bookingsUpdated', () => { searchPoolPromise = null })
 
   // global mouse listeners for drag
   document.addEventListener('mousemove', onDragMove)
@@ -120,8 +125,8 @@ function setupJobSearch () {
   let t = null
   const apply = () => {
     jobSearchQuery = (input.value || '').trim()
-    renderGrid() // filter grid immediately (no DB fetch)
-    renderSearchResults() // show results list
+    renderGrid() // filter the visible week/day immediately (no DB fetch)
+    renderSearchResults() // search across all bookings for the results list
   }
 
   input.addEventListener('input', () => {
@@ -175,7 +180,18 @@ function bookingDistanceFromToday (booking) {
   return Math.abs(ms - today.getTime())
 }
 
-function renderSearchResults () {
+function loadSearchPool () {
+  if (!searchPoolPromise) {
+    searchPoolPromise = api.getAllBookings().catch(err => {
+      console.error('Failed to load bookings for search', err)
+      searchPoolPromise = null
+      return []
+    })
+  }
+  return searchPoolPromise
+}
+
+async function renderSearchResults () {
   const container = document.getElementById('jobSearchResults')
   if (!container) return
 
@@ -184,7 +200,13 @@ function renderSearchResults () {
     return
   }
 
-  const results = (bookings || [])
+  const pool = await loadSearchPool()
+
+  // The query may have changed (or been cleared) while the fetch was in
+  // flight — don't clobber a newer render with a stale one.
+  if (!jobSearchQuery) return
+
+  const results = (pool || [])
     .filter(b => matchesJobSearch(b))
     .sort((a, b) => {
       const da = bookingDistanceFromToday(a)
@@ -237,7 +259,10 @@ function renderSearchResults () {
     const btn = e.target.closest('[data-action="jump-to-job"]')
     if (!btn) return
     const id = btn.dataset.bookingId
-    const booking = (bookings || []).find(x => String(x.id) === String(id))
+    // Look the booking up from the search pool, not the currently displayed
+    // week's `bookings` — the whole point of search is finding jobs outside
+    // the visible week, so it won't be in `bookings` yet.
+    const booking = results.find(x => String(x.id) === String(id))
     if (!booking) return
 
     // jump to the day that contains this booking, refresh data for that period

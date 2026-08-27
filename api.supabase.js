@@ -150,6 +150,13 @@ export async function getBookingsForDay (isoDate) {
   return unwrap(res).map(rowToBooking)
 }
 
+// Unscoped by date — used for job search, which needs to find a booking
+// regardless of which week is currently on screen.
+export async function getAllBookings () {
+  const res = await supabase.from('bookings').select('*').order('date', { ascending: true })
+  return unwrap(res).map(rowToBooking)
+}
+
 // Supports both call styles:
 // - getBookingsForWeek(weekStartDate)
 // - getBookingsForWeek('YYYY-MM-DD', 'YYYY-MM-DD')
