@@ -91,14 +91,28 @@ alter table teams enable row level security;
 alter table products enable row level security;
 alter table bookings enable row level security;
 
+-- RLS policies only decide which rows a role can see once it's already
+-- allowed to touch the table at all — that base permission is a separate
+-- grant. Supabase's project defaults normally cover this for new tables,
+-- but we grant explicitly rather than depend on that.
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on people, teams, products, bookings to authenticated;
+
+-- Scope policies to the `authenticated` Postgres role (`to authenticated`)
+-- rather than comparing auth.role() inside USING/WITH CHECK. PostgREST
+-- sets the execution role directly from the presented session JWT, so this
+-- is the reliable form — see Supabase's RLS docs. `using (true)` is safe
+-- here because the `to authenticated` scoping already excludes the `anon`
+-- role entirely; anon requests simply match no policy and are denied.
+
 create policy "authenticated full access" on people
-  for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+  for all to authenticated using (true) with check (true);
 
 create policy "authenticated full access" on teams
-  for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+  for all to authenticated using (true) with check (true);
 
 create policy "authenticated full access" on products
-  for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+  for all to authenticated using (true) with check (true);
 
 create policy "authenticated full access" on bookings
-  for all using (auth.role() = 'authenticated') with check (auth.role() = 'authenticated');
+  for all to authenticated using (true) with check (true);

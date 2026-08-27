@@ -36,6 +36,17 @@ The anon key in `config.js` is safe to commit — it's meant to be public.
 double check it's enabled on every table in the Supabase dashboard before
 relying on it.
 
+### Troubleshooting: 403 on every data load after signing in
+
+If the auth banner shows you're signed in but People/Products/Teams/
+Bookings all fail to load with 403s, your project was provisioned from an
+older copy of `schema.sql` whose RLS policies used a fragile
+`auth.role() = 'authenticated'` check instead of scoping to the
+`authenticated` Postgres role. Run `supabase/fix_403_permissions.sql` once
+in the SQL editor — it's idempotent — to patch the grants and policies on
+an existing project. New projects created from the current `schema.sql`
+don't need this.
+
 ## Local development
 
 No build step — just serve the folder statically, e.g.:
