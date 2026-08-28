@@ -6,7 +6,42 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js'
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+// "Remember me" on the login form: localStorage survives closing the
+// browser, sessionStorage is cleared with it. Supabase's client picks a
+// storage backend once at creation time, so instead of swapping clients
+// we hand it a small adapter that checks the user's saved preference on
+// every read/write and delegates to whichever backend should currently
+// hold the session. The preference flag itself is harmless in
+// localStorage either way — it's not the session, just which drawer to
+// put the session in.
+const REMEMBER_KEY = 'ibp-remember-me'
+
+export function shouldRemember () {
+  const v = localStorage.getItem(REMEMBER_KEY)
+  return v === null ? true : v === 'true' // default on, matches the old always-persisted behaviour
+}
+
+export function setRememberMe (remember) {
+  localStorage.setItem(REMEMBER_KEY, remember ? 'true' : 'false')
+}
+
+const rememberAwareStorage = {
+  getItem: key => (shouldRemember() ? localStorage : sessionStorage).getItem(key),
+  setItem: (key, value) => {
+    const active = shouldRemember() ? localStorage : sessionStorage
+    const inactive = shouldRemember() ? sessionStorage : localStorage
+    active.setItem(key, value)
+    inactive.removeItem(key) // don't leave a stale copy in the other backend
+  },
+  removeItem: key => {
+    localStorage.removeItem(key)
+    sessionStorage.removeItem(key)
+  }
+}
+
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { storage: rememberAwareStorage }
+})
 
 // --- helpers ---
 

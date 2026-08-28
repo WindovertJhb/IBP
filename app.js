@@ -5,7 +5,7 @@ import { initStatuses } from './components/statuses.js'
 import { initPeople } from './components/people.js'
 import { loadRole, isEditor } from './components/role.js'
 
-import { supabase, getSession, signInWithPassword, signOut } from './api.supabase.js'
+import { supabase, getSession, signInWithPassword, signOut, shouldRemember, setRememberMe } from './api.supabase.js'
 
 let appStarted = false
 let loginModal
@@ -72,6 +72,9 @@ document.addEventListener('DOMContentLoaded', () => {
     })
   }
 
+  const rememberInput = document.getElementById('loginRemember')
+  if (rememberInput) rememberInput.checked = shouldRemember()
+
   const loginForm = document.getElementById('loginForm')
   if (loginForm) {
     loginForm.addEventListener('submit', async e => {
@@ -86,6 +89,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const btn = document.getElementById('btnLoginSubmit')
       if (btn) btn.disabled = true
       try {
+        // Set the preference before signing in — Supabase writes the new
+        // session to storage as part of this call, and the storage
+        // adapter (api.supabase.js) reads the preference at that moment
+        // to decide where it goes.
+        setRememberMe(rememberInput ? rememberInput.checked : true)
         await signInWithPassword(email, password)
         // Full reload rather than re-running ensureSignedIn(): guarantees
         // every component starts fresh with the right role-based UI,
