@@ -56,18 +56,14 @@ export async function getSession () {
 function teamToRow (t) {
   return {
     id: t.id,
-    name: t.name,
-    team_lead_id: t.teamLeadId || null,
-    member_ids: Array.isArray(t.memberIds) ? t.memberIds : []
+    name: t.name
   }
 }
 
 function rowToTeam (r) {
   return {
     id: r.id,
-    name: r.name,
-    teamLeadId: r.team_lead_id,
-    memberIds: r.member_ids || []
+    name: r.name
   }
 }
 
@@ -97,6 +93,32 @@ export async function deleteTeam (id) {
   return unwrap(res)
 }
 
+// -------------------- statuses --------------------
+// Booking lifecycle stages (name + colour), fully user-managed from the
+// Status tab — nothing here is hardcoded.
+
+export async function getStatuses () {
+  const res = await supabase.from('statuses').select('*').order('name')
+  return unwrap(res)
+}
+
+export async function createStatus (payload) {
+  const res = await supabase.from('statuses').insert([payload]).select('*').single()
+  return unwrap(res)
+}
+
+export async function updateStatus (idOrPayload, patch) {
+  const { id, data } = splitId(idOrPayload, patch)
+  if (!id) throw new Error('updateStatus requires an id')
+  const res = await supabase.from('statuses').update(data).eq('id', id).select('*').single()
+  return unwrap(res)
+}
+
+export async function deleteStatus (id) {
+  const res = await supabase.from('statuses').delete().eq('id', id)
+  return unwrap(res)
+}
+
 // -------------------- bookings --------------------
 
 function bookingToRow (b) {
@@ -107,14 +129,13 @@ function bookingToRow (b) {
     start_time: b.startTime,
     duration_hours: b.durationHours,
     customer_name: b.customerName,
-    job_type: b.jobType,
+    status_id: b.statusId ?? null,
     notes: b.notes,
     address: b.address,
     client_phone: b.clientPhone,
     client_email: b.clientEmail,
     order_numbers: b.orderNumbers,
-    crew: b.crew ?? [],
-    products: b.products ?? [],
+    products_arrived: b.productsArrived ?? false,
     salesperson_id: b.salesperson_id ?? null
   }
 }
@@ -133,14 +154,13 @@ function rowToBooking (r) {
     startTime,
     durationHours: r.duration_hours,
     customerName: r.customer_name,
-    jobType: r.job_type,
+    statusId: r.status_id,
     notes: r.notes,
     address: r.address,
     clientPhone: r.client_phone,
     clientEmail: r.client_email,
     orderNumbers: r.order_numbers,
-    crew: r.crew ?? [],
-    products: r.products ?? [],
+    productsArrived: r.products_arrived ?? false,
     salesperson_id: r.salesperson_id ?? null
   }
 }
@@ -229,29 +249,5 @@ export async function updatePerson (idOrPayload, patch) {
 
 export async function deletePerson (id) {
   const res = await supabase.from('people').delete().eq('id', id)
-  return unwrap(res)
-}
-
-// -------------------- products --------------------
-
-export async function getProducts () {
-  const res = await supabase.from('products').select('*').order('name')
-  return unwrap(res)
-}
-
-export async function createProduct (payload) {
-  const res = await supabase.from('products').insert([payload]).select('*').single()
-  return unwrap(res)
-}
-
-export async function updateProduct (idOrPayload, patch) {
-  const { id, data } = splitId(idOrPayload, patch)
-  if (!id) throw new Error('updateProduct requires an id')
-  const res = await supabase.from('products').update(data).eq('id', id).select('*').single()
-  return unwrap(res)
-}
-
-export async function deleteProduct (id) {
-  const res = await supabase.from('products').delete().eq('id', id)
   return unwrap(res)
 }

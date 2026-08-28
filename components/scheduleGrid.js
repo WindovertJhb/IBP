@@ -11,7 +11,7 @@ const TIME_SLOTS = buildTimeSlots() // ["08:00","08:30",...]
 let teams = []
 let bookings = []
 let people = []
-let products = []
+let statuses = []
 
 let viewMode = 'day'
 let currentDate = new Date()
@@ -52,7 +52,7 @@ export function initScheduleGrid () {
   window.addEventListener('teamsUpdated', refreshData)
   window.addEventListener('bookingsUpdated', refreshData)
   window.addEventListener('peopleUpdated', refreshData)
-  window.addEventListener('productsUpdated', refreshData)
+  window.addEventListener('statusesUpdated', refreshData)
   window.addEventListener('bookingsUpdated', () => { searchPoolPromise = null })
 
   // global mouse listeners for drag
@@ -71,13 +71,14 @@ async function refreshData () {
   try {
     teams = await api.getTeams()
     people = await api.getPeople()
-    products = await api.getProducts()
+    statuses = await api.getStatuses()
 
     const weekStart = getMonday(currentDate)
     bookings = await api.getBookingsForWeek(weekStart)
 
     populateModalOptions()
     renderLabel()
+    renderLegend()
     renderGrid()
     renderSearchResults()
 
@@ -113,6 +114,24 @@ function renderLabel () {
       dayPickerEl.disabled = true
     }
   }
+}
+
+function renderLegend () {
+  const legendEl = document.getElementById('scheduleLegend')
+  if (!legendEl) return
+
+  if (!statuses.length) {
+    legendEl.innerHTML = ''
+    return
+  }
+
+  legendEl.innerHTML = statuses
+    .map(s => `
+      <span>
+        <span class="legend-color" style="background-color: ${escapeHtml(s.color)};"></span>${escapeHtml(s.name)}
+      </span>
+    `)
+    .join('')
 }
 
 /* ---------------- job search ---------------- */
@@ -373,7 +392,9 @@ function renderGrid () {
           `
         } else if (cell.type === 'booking') {
           const b = cell.booking
-          const cssClass = jobTypeClass(b.jobType)
+          const status = statuses.find(s => String(s.id) === String(b.statusId))
+          const bgColor = status ? status.color : '#6c757d' // fallback for bookings with no status set
+          const textColor = contrastTextColor(bgColor)
 
           const customerBits = [
             b.customerName && b.customerName.trim(),
@@ -392,7 +413,8 @@ function renderGrid () {
                 data-time="${slotTime}"
                 rowspan="${cell.rowSpan}"
             >
-                <div class="booking-block ${cssClass}" data-booking-id="${b.id}">
+                <div class="booking-block" data-booking-id="${b.id}" style="background-color: ${escapeHtml(bgColor)}; color: ${textColor};">
+                ${b.productsArrived ? '<div class="booking-arrived-badge" title="Products arrived in store">📦</div>' : ''}
                 <div class="booking-line-time">${slotTime}</div>
                 <div class="booking-line-customer">${escapeHtml(customerLabel)}</div>
                 ${metaLine ? `<div class="booking-line-meta">${escapeHtml(metaLine)}</div>` : ''}
@@ -422,15 +444,17 @@ function renderGrid () {
   }
 }
 
-function jobTypeLabel (jobType) {
-  switch (jobType) {
-    case 'measure': return 'Measure / Quote'
-    case 'install': return 'Install'
-    case 'service': return 'Service'
-    case 'transit': return 'Transit / Travel'
-    case 'other': return 'Other'
-    default: return ''
-  }
+// Simple luminance heuristic: light backgrounds get black text, dark
+// backgrounds get white text — good enough to stay readable across
+// whatever colours get picked on the Status tab.
+function contrastTextColor (hex) {
+  const c = String(hex || '').replace('#', '')
+  if (c.length !== 6) return '#000'
+  const r = parseInt(c.substring(0, 2), 16)
+  const g = parseInt(c.substring(2, 4), 16)
+  const b = parseInt(c.substring(4, 6), 16)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return luminance > 0.6 ? '#000' : '#fff'
 }
 
 function onResizeMove (e) {
@@ -803,45 +827,20 @@ function handlePrintDay () {
       const teamBookings = dayBookings.filter(b => b.teamId === team.id)
       if (!teamBookings.length) return
 
-      const crewIdSet = new Set()
-      teamBookings.forEach(b => {
-        if (Array.isArray(b.crew)) b.crew.forEach(id => crewIdSet.add(String(id)))
-      })
-      const crewList = [...crewIdSet].map(id => people.find(p => String(p.id) === String(id))).filter(Boolean)
-      const crewNames = crewList.length > 0 ? crewList.map(p => p.name).join(', ') : 'No crew assigned yet'
-
       html += `
         <div class="print-team-page">
           <div class="print-team-header">
             <h2>${escapeHtml(team.name)} – ${escapeHtml(dayLabel)}</h2>
-            <div class="small">Crew for the day: ${escapeHtml(crewNames)}</div>
           </div>
       `
 
       teamBookings.forEach((b, idx) => {
-        const jobLabel = jobTypeLabel(b.jobType) || 'Job'
+        const bookingStatus = statuses.find(s => String(s.id) === String(b.statusId))
+        const jobLabel = bookingStatus ? bookingStatus.name : 'Job'
 
         const salespersonId = b.salesperson_id
         const salespersonName = salespersonId ? (people.find(p => String(p.id) === String(salespersonId)) || {}).name : ''
         const salespersonLabel = salespersonName || (salespersonId ? String(salespersonId) : '')
-
-        const jobCrewNames = Array.isArray(b.crew)
-          ? b.crew.map(id => (people.find(p => String(p.id) === String(id)) || {}).name).filter(Boolean).join(', ')
-          : ''
-
-        const productLines = Array.isArray(b.products)
-          ? b.products
-            .map(item => {
-              const prod = products.find(p => String(p.id) === String(item.productId))
-              if (!prod) return ''
-              const sub = prod.sub_type || ''
-              const label = sub ? `${prod.name} – ${sub}` : prod.name
-              const qty = item.quantity != null ? item.quantity : 1
-              return `${qty}× ${label}`
-            })
-            .filter(Boolean)
-            .join('; ')
-          : ''
 
         html += `
           <div class="print-jobcard">
@@ -862,23 +861,15 @@ function handlePrintDay () {
               <div class="print-jobcard-value">${escapeHtml(b.clientPhone || '')}</div>
             </div>
             <div class="print-jobcard-row">
-              <div class="print-jobcard-label">Address</div>
-              <div class="print-jobcard-value">${escapeHtml((b.address || '').replace(/\n/g, ', '))}</div>
-            </div>
-            <div class="print-jobcard-row">
               <div class="print-jobcard-label">Order #</div>
               <div class="print-jobcard-value">${escapeHtml(b.orderNumbers || '')}</div>
             </div>
             <div class="print-jobcard-row">
-              <div class="print-jobcard-label">Products</div>
-              <div class="print-jobcard-value">${escapeHtml(productLines)}</div>
+              <div class="print-jobcard-label">Address</div>
+              <div class="print-jobcard-value">${escapeHtml((b.address || '').replace(/\n/g, ', '))}</div>
             </div>
             <div class="print-jobcard-row">
-              <div class="print-jobcard-label">Crew</div>
-              <div class="print-jobcard-value">${escapeHtml(jobCrewNames || '')}</div>
-            </div>
-            <div class="print-jobcard-row">
-              <div class="print-jobcard-label">Notes</div>
+              <div class="print-jobcard-label">Products / Notes</div>
               <div class="print-jobcard-value">${escapeHtml(b.notes || '')}</div>
             </div>
           </div>
@@ -898,19 +889,6 @@ function handlePrintDay () {
 /* ---------------- modal wiring ---------------- */
 
 function populateModalOptions () {
-  const teamSelect = document.getElementById('booking-team')
-  if (teamSelect) {
-    const prev = teamSelect.value
-    teamSelect.innerHTML = ''
-    teams.forEach(t => {
-      const opt = document.createElement('option')
-      opt.value = t.id
-      opt.textContent = t.name
-      teamSelect.appendChild(opt)
-    })
-    if (prev && teams.some(t => t.id === prev)) teamSelect.value = prev
-  }
-
   const startSelect = document.getElementById('booking-start')
   if (startSelect) {
     const prev = startSelect.value
@@ -932,10 +910,11 @@ function populateModalOptions () {
 
     const salesPeople = (people || []).filter(p => String(p.role || '').toLowerCase() === 'sales')
 
-    const noneOpt = document.createElement('option')
-    noneOpt.value = ''
-    noneOpt.textContent = '— None —'
-    salespersonSelect.appendChild(noneOpt)
+    const placeholderOpt = document.createElement('option')
+    placeholderOpt.value = ''
+    placeholderOpt.textContent = 'Select salesperson…'
+    placeholderOpt.disabled = true
+    salespersonSelect.appendChild(placeholderOpt)
 
     salesPeople.forEach(p => {
       const opt = document.createElement('option')
@@ -948,6 +927,32 @@ function populateModalOptions () {
       salespersonSelect.value = prev
     } else {
       salespersonSelect.value = ''
+    }
+  }
+
+  // Status (booking lifecycle stage — managed on the Status tab)
+  const statusSelect = document.getElementById('booking-status')
+  if (statusSelect) {
+    const prev = statusSelect.value
+    statusSelect.innerHTML = ''
+
+    if (!statuses.length) {
+      const emptyOpt = document.createElement('option')
+      emptyOpt.value = ''
+      emptyOpt.textContent = 'Add a status on the Status tab first'
+      emptyOpt.disabled = true
+      statusSelect.appendChild(emptyOpt)
+    } else {
+      statuses.forEach(s => {
+        const opt = document.createElement('option')
+        opt.value = s.id
+        opt.textContent = s.name
+        statusSelect.appendChild(opt)
+      })
+    }
+
+    if (prev && statuses.some(s => String(s.id) === String(prev))) {
+      statusSelect.value = prev
     }
   }
 }
@@ -965,17 +970,6 @@ function setupModalHandlers () {
     el.addEventListener('change', updateBookingContactLinks)
   }
 
-  // Re-render the crew checklist (with availability info) when date/team changes
-  for (const id of ['booking-date', 'booking-team']) {
-    const el = document.getElementById(id)
-    if (!el) continue
-    el.addEventListener('change', () => {
-      const idInput = document.getElementById('booking-id')
-      const existing = idInput.value ? bookings.find(b => String(b.id) === idInput.value) : null
-      renderCrewList(existing)
-    })
-  }
-
   bookingForm.addEventListener('submit', async evt => {
     evt.preventDefault()
 
@@ -986,37 +980,17 @@ function setupModalHandlers () {
     const durationInput = document.getElementById('booking-duration')
     const customerInput = document.getElementById('booking-customer')
     const notesInput = document.getElementById('booking-notes')
-    const jobTypeSelect = document.getElementById('booking-jobType')
+    const statusSelect = document.getElementById('booking-status')
     const addressInput = document.getElementById('booking-address')
     const phoneInput = document.getElementById('booking-phone')
     const emailInput = document.getElementById('booking-email')
     const orderInput = document.getElementById('booking-orderNumbers')
     const salespersonSelect = document.getElementById('booking-salesperson')
-    const crewContainer = document.getElementById('booking-crew')
-    const productsContainer = document.getElementById('booking-products')
+    const productsArrivedInput = document.getElementById('booking-products-arrived')
     const errorEl = document.getElementById('booking-error')
 
     const rawDuration = durationInput.value.replace(',', '.')
     const durationHours = toNumber(rawDuration) || 1.5
-
-    let crew = []
-    if (crewContainer) {
-      crew = Array.from(crewContainer.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value)
-    }
-
-    const productsPayload = []
-    if (productsContainer) {
-      const rows = productsContainer.querySelectorAll('.booking-product-row')
-      rows.forEach(row => {
-        const select = row.querySelector('.booking-product-select')
-        const qtyInput = row.querySelector('.booking-product-qty')
-        if (!select) return
-        const productId = select.value
-        if (!productId) return
-        const quantity = parseInt(qtyInput?.value || '1', 10) || 1
-        productsPayload.push({ productId, quantity })
-      })
-    }
 
     const payload = {
       id: idInput.value || null,
@@ -1026,14 +1000,21 @@ function setupModalHandlers () {
       durationHours,
       customerName: customerInput.value.trim(),
       notes: notesInput.value.trim(),
-      jobType: jobTypeSelect ? jobTypeSelect.value : 'other',
+      statusId: statusSelect ? (statusSelect.value || null) : null,
       address: addressInput ? addressInput.value.trim() : '',
       clientPhone: phoneInput ? phoneInput.value.trim() : '',
       clientEmail: emailInput ? emailInput.value.trim() : '',
       orderNumbers: orderInput ? orderInput.value.trim() : '',
       salesperson_id: salespersonSelect ? (salespersonSelect.value || null) : null,
-      crew,
-      products: productsPayload
+      productsArrived: productsArrivedInput ? productsArrivedInput.checked : false
+    }
+
+    if (!payload.salesperson_id) {
+      if (errorEl) {
+        errorEl.textContent = 'Please select a salesperson.'
+        errorEl.classList.remove('d-none')
+      }
+      return
     }
 
     if (!fitsInDay(payload)) {
@@ -1090,6 +1071,13 @@ function setupModalHandlers () {
   }
 }
 
+function updateTeamLabel (teamId) {
+  const label = document.getElementById('booking-team-label')
+  if (!label) return
+  const team = teams.find(t => String(t.id) === String(teamId))
+  label.textContent = team ? team.name : '—'
+}
+
 function openModalForNew (dateISO, teamId, startTime) {
   const idInput = document.getElementById('booking-id')
   const dateInput = document.getElementById('booking-date')
@@ -1100,12 +1088,13 @@ function openModalForNew (dateISO, teamId, startTime) {
   const notesInput = document.getElementById('booking-notes')
   const deleteBtn = document.getElementById('btn-delete-booking')
   const errorEl = document.getElementById('booking-error')
-  const jobTypeSelect = document.getElementById('booking-jobType')
+  const statusSelect = document.getElementById('booking-status')
   const addressInput = document.getElementById('booking-address')
   const phoneInput = document.getElementById('booking-phone')
   const emailInput = document.getElementById('booking-email')
   const orderInput = document.getElementById('booking-orderNumbers')
   const salespersonSelect = document.getElementById('booking-salesperson')
+  const productsArrivedInput = document.getElementById('booking-products-arrived')
 
   if (idInput) idInput.value = ''
   if (deleteBtn) deleteBtn.classList.add('d-none')
@@ -1117,14 +1106,15 @@ function openModalForNew (dateISO, teamId, startTime) {
   durationInput.value = '1.5'
   customerInput.value = ''
   notesInput.value = ''
-  if (jobTypeSelect) jobTypeSelect.value = 'install'
+  if (statusSelect) statusSelect.value = statuses[0]?.id || ''
   if (addressInput) addressInput.value = ''
   if (phoneInput) phoneInput.value = ''
   if (emailInput) emailInput.value = ''
   if (orderInput) orderInput.value = ''
   if (salespersonSelect) salespersonSelect.value = ''
+  if (productsArrivedInput) productsArrivedInput.checked = false
 
-  renderCrewAndProducts(null)
+  updateTeamLabel(teamId)
 
   document.getElementById('bookingModalLabel').textContent = 'New booking'
   updateBookingContactLinks()
@@ -1141,12 +1131,13 @@ function openModalForEdit (booking) {
   const notesInput = document.getElementById('booking-notes')
   const deleteBtn = document.getElementById('btn-delete-booking')
   const errorEl = document.getElementById('booking-error')
-  const jobTypeSelect = document.getElementById('booking-jobType')
+  const statusSelect = document.getElementById('booking-status')
   const addressInput = document.getElementById('booking-address')
   const phoneInput = document.getElementById('booking-phone')
   const emailInput = document.getElementById('booking-email')
   const orderInput = document.getElementById('booking-orderNumbers')
   const salespersonSelect = document.getElementById('booking-salesperson')
+  const productsArrivedInput = document.getElementById('booking-products-arrived')
 
   if (idInput) idInput.value = booking.id
   if (deleteBtn) deleteBtn.classList.remove('d-none')
@@ -1158,7 +1149,7 @@ function openModalForEdit (booking) {
   durationInput.value = String(toNumber(booking.durationHours) || 1.5)
   customerInput.value = booking.customerName || ''
   notesInput.value = booking.notes || ''
-  if (jobTypeSelect) jobTypeSelect.value = booking.jobType || 'other'
+  if (statusSelect) statusSelect.value = booking.statusId != null ? String(booking.statusId) : ''
   if (addressInput) addressInput.value = booking.address || ''
   if (phoneInput) phoneInput.value = booking.clientPhone || ''
   if (emailInput) emailInput.value = booking.clientEmail || ''
@@ -1167,8 +1158,9 @@ function openModalForEdit (booking) {
     const sp = booking.salesperson_id
     salespersonSelect.value = sp != null ? String(sp) : ''
   }
+  if (productsArrivedInput) productsArrivedInput.checked = !!booking.productsArrived
 
-  renderCrewAndProducts(booking)
+  updateTeamLabel(booking.teamId)
 
   document.getElementById('bookingModalLabel').textContent = 'Edit booking'
   updateBookingContactLinks()
@@ -1271,133 +1263,13 @@ function updateBookingContactLinks () {
   }
 }
 
-/* ---------------- crew / products editors ---------------- */
-
-function renderCrewAndProducts (booking) {
-  renderCrewList(booking)
-  renderProductLines(booking)
-}
-
-function renderCrewList (booking) {
-  const container = document.getElementById('booking-crew')
-  if (!container) return
-
-  if (!people || !people.length) {
-    container.innerHTML = '<div class="text-muted small">No people yet. Add them on the People tab.</div>'
-    return
-  }
-
-  const dateInput = document.getElementById('booking-date')
-  const teamSelect = document.getElementById('booking-team')
-
-  const dateISO = (booking && booking.date) || (dateInput && dateInput.value) || null
-  const teamId = (booking && booking.teamId) || (teamSelect && teamSelect.value) || null
-
-  // People already booked on another team for this date
-  const unavailableIds = new Set()
-  if (dateISO && teamId) {
-    bookings.forEach(b => {
-      if (b.date !== dateISO) return
-      if (b.teamId === teamId) return
-      if (!Array.isArray(b.crew)) return
-      b.crew.forEach(pid => unavailableIds.add(String(pid)))
-    })
-  }
-
-  const selectedIds = new Set((booking && booking.crew ? booking.crew : []).map(String))
-
-  // filter out sales from the crew list, but keep a previously-saved sales
-  // person visible so they can be unticked
-  const crewCandidates = (people || []).filter(p => {
-    const isSales = String(p.role || '').toLowerCase() === 'sales'
-    if (isSales && selectedIds.has(String(p.id))) return true
-    return !isSales
-  })
-
-  container.innerHTML = crewCandidates
-    .map(p => {
-      const idStr = String(p.id)
-      const checked = selectedIds.has(idStr) ? 'checked' : ''
-
-      const isUnavailable = unavailableIds.has(idStr) && !selectedIds.has(idStr)
-      const disabled = isUnavailable ? 'disabled' : ''
-
-      const roleText = p.role ? ` <span class="text-muted small">(${escapeHtml(p.role)})</span>` : ''
-      const unavailableNote = isUnavailable ? ' <span class="text-danger small ms-1">(Booked on another team today)</span>' : ''
-
-      return `
-        <div class="form-check form-check-sm">
-          <input class="form-check-input" type="checkbox" value="${p.id}" id="crew-${p.id}" ${checked} ${disabled} />
-          <label class="form-check-label" for="crew-${p.id}">
-            ${escapeHtml(p.name)}${roleText}${unavailableNote}
-          </label>
-        </div>
-      `
-    })
-    .join('')
-}
-
-function renderProductLines (booking) {
-  const container = document.getElementById('booking-products')
-  const addBtn = document.getElementById('booking-add-product')
-  if (!container) return
-
-  let rows = booking && booking.products && booking.products.length ? booking.products : []
-  if (!rows.length) rows = [{ productId: '', quantity: 1 }]
-
-  container.innerHTML = rows.map((row, idx) => buildProductRow(row, idx)).join('')
-
-  if (addBtn && !addBtn._wired) {
-    addBtn.addEventListener('click', () => {
-      const idx = container.querySelectorAll('.booking-product-row').length
-      const empty = { productId: '', quantity: 1 }
-      container.insertAdjacentHTML('beforeend', buildProductRow(empty, idx))
-    })
-    addBtn._wired = true
-  }
-
-  container.onclick = e => {
-    const removeBtn = e.target.closest('.booking-product-remove')
-    if (!removeBtn) return
-    const rowEl = removeBtn.closest('.booking-product-row')
-    if (!rowEl) return
-    rowEl.remove()
-  }
-}
-
-function buildProductRow (row, index) {
-  const selectedId = row.productId || ''
-  const qty = row.quantity != null ? row.quantity : 1
-
-  const options = '<option value="">Select product…</option>' +
-    (products || [])
-      .map(p => {
-        const label = p.sub_type ? `${p.name} – ${p.sub_type}` : p.name
-        const selected = String(p.id) === String(selectedId) ? ' selected' : ''
-        return `<option value="${p.id}"${selected}>${escapeHtml(label)}</option>`
-      })
-      .join('')
-
-  return `
-    <div class="d-flex align-items-center mb-1 booking-product-row" data-row-index="${index}">
-      <select class="form-select form-select-sm booking-product-select">
-        ${options}
-      </select>
-      <input type="number" min="1" step="1" class="form-control form-control-sm ms-1 booking-product-qty" value="${qty}" />
-      <button type="button" class="btn btn-sm btn-outline-danger ms-1 booking-product-remove" aria-label="Remove product line">
-        &times;
-      </button>
-    </div>
-  `
-}
-
 /* ---------------- helpers ---------------- */
 
 function buildBookingMetaLine (b) {
   const bits = []
 
-  const jobLabel = jobTypeLabel(b.jobType)
-  if (jobLabel) bits.push(jobLabel)
+  const status = statuses.find(s => String(s.id) === String(b.statusId))
+  if (status) bits.push(status.name)
 
   const salesperson = b.salesperson_id
   if (salesperson != null && people && people.length) {
@@ -1413,20 +1285,6 @@ function buildBookingMetaLine (b) {
     bits.push(orderSummary)
   }
 
-  if (Array.isArray(b.products) && b.products.length && products && products.length) {
-    const first = b.products[0]
-    const prod = products.find(p => String(p.id) === String(first.productId))
-    if (prod) {
-      const label = prod.sub_type ? `${prod.name} – ${prod.sub_type}` : prod.name
-      const qty = first.quantity != null ? first.quantity : 1
-      bits.push(`${qty}× ${label}`)
-    }
-  }
-
-  if (Array.isArray(b.crew) && b.crew.length) {
-    bits.push(`${b.crew.length} crew`)
-  }
-
   return bits.join(' – ')
 }
 
@@ -1437,16 +1295,6 @@ function buildTimeSlots () {
     slots.push(`${String(h).padStart(2, '0')}:30`)
   }
   return slots
-}
-
-function jobTypeClass (jobType) {
-  switch (jobType) {
-    case 'measure': return 'booking-service-pro'
-    case 'install': return 'booking-service-major'
-    case 'service': return 'booking-service-expert'
-    case 'transit': return 'booking-service-transit'
-    default: return 'booking-service-min'
-  }
 }
 
 function findBookingByBlock (block) {

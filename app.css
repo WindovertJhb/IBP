@@ -1,13 +1,4 @@
 /* ===========================
-   Basic layout / shared bits
-   =========================== */
-
-.people-role-badge {
-  font-size: 0.7rem;
-  font-weight: 500;
-}
-
-/* ===========================
    Schedule toolbar / header
    =========================== */
 
@@ -159,33 +150,15 @@
   z-index: 9999;
 }
 
-/* ===========================
-   Booking type colours
-   =========================== */
-
-.booking-service-pro {
-  background-color: #0d6efd;
-  color: #fff;
-}
-
-.booking-service-major {
-  background-color: #0dcaf0;
-  color: #000;
-}
-
-.booking-service-expert {
-  background-color: #20c997;
-  color: #000;
-}
-
-.booking-service-min {
-  background-color: #ffc107;
-  color: #000;
-}
-
-.booking-service-transit {
-  background-color: #6c757d;
-  color: #fff;
+/* Small badge showing products have arrived in store — needs to read
+   clearly regardless of which status colour the block is using. */
+.booking-arrived-badge {
+  position: absolute;
+  top: 1px;
+  right: 3px;
+  font-size: 0.85rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.7));
 }
 
 /* ===========================
@@ -205,18 +178,6 @@
   height: 14px;
   border-radius: 3px;
   margin-right: 6px;
-}
-
-/* ===========================
-   Booking modal extras
-   =========================== */
-
-.booking-products .booking-product-row:last-child {
-  margin-bottom: 0;
-}
-
-.booking-crew-list .form-check {
-  margin-bottom: 0.25rem;
 }
 
 /* ===========================

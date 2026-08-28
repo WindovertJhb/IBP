@@ -5,13 +5,16 @@
 --
 -- This intentionally does not try to migrate data from the old BrianTool
 -- Supabase project — see supabase/seed.sql for re-entering the current
--- short list of teams/people/products by hand.
+-- short list of teams/salespeople by hand.
 
 create extension if not exists pgcrypto;
 
 -- ---------- people ----------
--- Installers/fitters, sales reps, admin staff. Team leads, booking crew,
--- and the booking salesperson all reference this one table.
+-- Salespeople only — every row the app creates has role 'sales'. The
+-- role column and its other values are legacy from when this table also
+-- covered fitters/admin/other (team membership and per-job crew
+-- assignment, both since removed); left in place rather than narrowed to
+-- a hard 'sales' constraint so old non-sales rows aren't rejected.
 
 create table people (
   id uuid primary key default gen_random_uuid(),
@@ -22,21 +25,24 @@ create table people (
 );
 
 -- ---------- teams ----------
+-- Just a name. Bookings reference a team by id to place it on the
+-- schedule's columns.
 
 create table teams (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  team_lead_id uuid references people(id) on delete set null,
-  member_ids uuid[] not null default '{}',
   created_at timestamptz not null default now()
 );
 
--- ---------- products ----------
+-- ---------- statuses ----------
+-- User-managed booking lifecycle stages (e.g. "Pre-Programmed",
+-- "Date Confirmed"), each with a colour shown on the schedule grid.
+-- Fully editable from the Status tab — nothing is hardcoded in the app.
 
-create table products (
+create table statuses (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  sub_type text,
+  color text not null default '#0d6efd',
   created_at timestamptz not null default now()
 );
 
@@ -49,14 +55,13 @@ create table bookings (
   start_time time not null,
   duration_hours numeric(4, 2) not null default 1.5,
   customer_name text,
-  job_type text not null default 'other' check (job_type in ('measure', 'install', 'service', 'other', 'transit')),
+  status_id uuid references statuses(id) on delete set null,
   notes text,
   address text,
   client_phone text,
   client_email text,
   order_numbers text,
-  crew uuid[] not null default '{}',
-  products jsonb not null default '[]',
+  products_arrived boolean not null default false,
   salesperson_id uuid references people(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -88,7 +93,7 @@ create trigger bookings_set_updated_at
 
 alter table people enable row level security;
 alter table teams enable row level security;
-alter table products enable row level security;
+alter table statuses enable row level security;
 alter table bookings enable row level security;
 
 -- RLS policies only decide which rows a role can see once it's already
@@ -96,7 +101,7 @@ alter table bookings enable row level security;
 -- grant. Supabase's project defaults normally cover this for new tables,
 -- but we grant explicitly rather than depend on that.
 grant usage on schema public to authenticated;
-grant select, insert, update, delete on people, teams, products, bookings to authenticated;
+grant select, insert, update, delete on people, teams, statuses, bookings to authenticated;
 
 -- Scope policies to the `authenticated` Postgres role (`to authenticated`)
 -- rather than comparing auth.role() inside USING/WITH CHECK. PostgREST
@@ -111,7 +116,7 @@ create policy "authenticated full access" on people
 create policy "authenticated full access" on teams
   for all to authenticated using (true) with check (true);
 
-create policy "authenticated full access" on products
+create policy "authenticated full access" on statuses
   for all to authenticated using (true) with check (true);
 
 create policy "authenticated full access" on bookings

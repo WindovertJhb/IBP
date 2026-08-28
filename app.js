@@ -1,8 +1,8 @@
 // app.js
 import { initScheduleGrid } from './components/scheduleGrid.js'
 import { initTeams } from './components/teams.js'
+import { initStatuses } from './components/statuses.js'
 import { initPeople } from './components/people.js'
-import { initProducts } from './components/products.js'
 
 import { supabase, getSession, signInWithPassword, signOut } from './api.supabase.js'
 
@@ -14,8 +14,8 @@ function startAppOnce () {
   appStarted = true
   initScheduleGrid()
   initTeams()
+  initStatuses()
   initPeople()
-  initProducts()
 }
 
 function setLoginError (msg) {

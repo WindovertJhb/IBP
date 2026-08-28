@@ -1,4 +1,8 @@
 // components/people.js
+//
+// This tab manages salespeople only — the "role" concept (fitter/admin/
+// other) that used to live here went away along with team membership and
+// per-job crew assignment. Every row this tab creates is role: 'sales'.
 import * as api from '../api.supabase.js'
 import { escapeHtml } from './dom.js'
 
@@ -11,7 +15,8 @@ export function initPeople () {
 
 async function refreshPeople () {
   try {
-    people = await api.getPeople()
+    const all = await api.getPeople()
+    people = all.filter(p => String(p.role || '').toLowerCase() === 'sales')
   } catch (err) {
     console.error('Failed to load people', err)
     people = []
@@ -45,8 +50,8 @@ function renderPeopleTable () {
   if (!people.length) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="4" class="text-muted small text-center py-3">
-          No people yet. Add your first fitter, sales person, or admin on the left.
+        <td colspan="3" class="text-muted small text-center py-3">
+          No salespeople yet. Add your first one on the left.
         </td>
       </tr>
     `
@@ -55,16 +60,10 @@ function renderPeopleTable () {
 
   tbody.innerHTML = people
     .map(p => {
-      const roleLabel = roleDisplay(p.role)
       const phone = p.phone || ''
       return `
         <tr data-person-id="${p.id}">
           <td>${escapeHtml(p.name)}</td>
-          <td>
-            <span class="badge bg-light border text-muted people-role-badge">
-              ${roleLabel}
-            </span>
-          </td>
           <td>${escapeHtml(phone)}</td>
           <td class="text-end">
             <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete-person">
@@ -84,12 +83,10 @@ async function onFormSubmit (e) {
 
   const idInput = document.getElementById('person-id')
   const nameInput = document.getElementById('person-name')
-  const roleSelect = document.getElementById('person-role')
   const phoneInput = document.getElementById('person-phone')
 
   const id = idInput.value || null
   const name = nameInput.value.trim()
-  const role = roleSelect.value
   const phone = phoneInput.value.trim()
 
   if (!name) {
@@ -97,7 +94,7 @@ async function onFormSubmit (e) {
     return
   }
 
-  const payload = { name, role, phone }
+  const payload = { name, role: 'sales', phone }
 
   try {
     if (id) {
@@ -111,7 +108,7 @@ async function onFormSubmit (e) {
     await refreshPeople()
   } catch (err) {
     console.error('Failed to save person', err)
-    alert('Unable to save person.')
+    alert('Unable to save salesperson.')
   }
 }
 
@@ -143,7 +140,7 @@ async function handleDeletePerson (person) {
     }
   } catch (err) {
     console.error('Failed to delete person', err)
-    alert('Unable to delete person. They may still be assigned to a team or booking.')
+    alert('Unable to delete salesperson.')
   }
 }
 
@@ -152,38 +149,23 @@ async function handleDeletePerson (person) {
 function fillForm (person) {
   const idInput = document.getElementById('person-id')
   const nameInput = document.getElementById('person-name')
-  const roleSelect = document.getElementById('person-role')
   const phoneInput = document.getElementById('person-phone')
 
   if (!idInput) return
 
   idInput.value = person.id
   nameInput.value = person.name || ''
-  roleSelect.value = person.role || 'fitter'
   phoneInput.value = person.phone || ''
 }
 
 function clearForm () {
   const idInput = document.getElementById('person-id')
   const nameInput = document.getElementById('person-name')
-  const roleSelect = document.getElementById('person-role')
   const phoneInput = document.getElementById('person-phone')
 
   if (!idInput) return
 
   idInput.value = ''
   nameInput.value = ''
-  roleSelect.value = 'fitter'
   phoneInput.value = ''
-}
-
-/* ------------ Small utils ------------ */
-
-function roleDisplay (role) {
-  switch (role) {
-    case 'fitter': return 'Fitter'
-    case 'sales': return 'Sales'
-    case 'admin': return 'Admin'
-    default: return 'Other'
-  }
 }
