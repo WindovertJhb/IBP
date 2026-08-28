@@ -84,6 +84,11 @@
   z-index: 10;
 }
 
+/* Empty slots aren't clickable for read-only users — no create capability */
+.viewer-mode .schedule-slot {
+  cursor: default;
+}
+
 /* ===========================
    Booking blocks (in-grid)
    =========================== */
@@ -98,6 +103,10 @@
   overflow: hidden;
   white-space: normal;
   cursor: grab;
+}
+
+.booking-block-readonly {
+  cursor: pointer;
 }
 
 .booking-line-time {

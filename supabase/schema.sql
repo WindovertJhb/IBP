@@ -85,12 +85,53 @@ create trigger bookings_set_updated_at
   for each row
   execute function set_updated_at();
 
+-- ---------- profiles / user roles ----------
+-- One row per login user (created via Supabase Dashboard → Authentication
+-- → Users — this app has no self-service signup). 'editor' can create,
+-- edit, and delete; 'viewer' can only read. New users default to
+-- 'viewer' — the safer default — flip someone to 'editor' with:
+--   update profiles set role = 'editor'
+--   where id = (select id from auth.users where email = 'person@example.com');
+
+create table profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  role text not null default 'viewer' check (role in ('editor', 'viewer')),
+  created_at timestamptz not null default now()
+);
+
+create or replace function handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into public.profiles (id, role) values (new.id, 'viewer');
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function handle_new_user();
+
+create or replace function is_editor()
+returns boolean
+language sql
+stable
+as $$
+  select exists (
+    select 1 from profiles where id = auth.uid() and role = 'editor'
+  );
+$$;
+
 -- ---------- Row Level Security ----------
 -- The anon key is safe to publish (it's a publishable key), but only
 -- because RLS is the real access control here. The app gates its UI with
 -- Supabase Auth (email/password) — mirror that at the database level so a
--- copied anon key alone can't read or write anything.
+-- copied anon key alone can't read or write anything. Every signed-in user
+-- can read; only 'editor' profiles can write — see is_editor() above.
 
+alter table profiles enable row level security;
 alter table people enable row level security;
 alter table teams enable row level security;
 alter table statuses enable row level security;
@@ -102,22 +143,53 @@ alter table bookings enable row level security;
 -- but we grant explicitly rather than depend on that.
 grant usage on schema public to authenticated;
 grant select, insert, update, delete on people, teams, statuses, bookings to authenticated;
+grant select on profiles to authenticated;
 
 -- Scope policies to the `authenticated` Postgres role (`to authenticated`)
 -- rather than comparing auth.role() inside USING/WITH CHECK. PostgREST
 -- sets the execution role directly from the presented session JWT, so this
--- is the reliable form — see Supabase's RLS docs. `using (true)` is safe
--- here because the `to authenticated` scoping already excludes the `anon`
--- role entirely; anon requests simply match no policy and are denied.
+-- is the reliable form — see Supabase's RLS docs.
 
-create policy "authenticated full access" on people
-  for all to authenticated using (true) with check (true);
+-- profiles: everyone signed in can read (needed so the UI can tell who's
+-- an editor), but there's deliberately no insert/update/delete policy for
+-- regular users — that's default-deny, so a viewer can't just grant
+-- themselves editor. Only the trigger above (which runs as its owner, not
+-- as the "authenticated" role) or a direct SQL-editor change can write it.
+create policy "authenticated read profiles" on profiles
+  for select to authenticated using (true);
 
-create policy "authenticated full access" on teams
-  for all to authenticated using (true) with check (true);
+create policy "authenticated read people" on people
+  for select to authenticated using (true);
+create policy "editors write people" on people
+  for insert to authenticated with check (is_editor());
+create policy "editors update people" on people
+  for update to authenticated using (is_editor()) with check (is_editor());
+create policy "editors delete people" on people
+  for delete to authenticated using (is_editor());
 
-create policy "authenticated full access" on statuses
-  for all to authenticated using (true) with check (true);
+create policy "authenticated read teams" on teams
+  for select to authenticated using (true);
+create policy "editors write teams" on teams
+  for insert to authenticated with check (is_editor());
+create policy "editors update teams" on teams
+  for update to authenticated using (is_editor()) with check (is_editor());
+create policy "editors delete teams" on teams
+  for delete to authenticated using (is_editor());
 
-create policy "authenticated full access" on bookings
-  for all to authenticated using (true) with check (true);
+create policy "authenticated read statuses" on statuses
+  for select to authenticated using (true);
+create policy "editors write statuses" on statuses
+  for insert to authenticated with check (is_editor());
+create policy "editors update statuses" on statuses
+  for update to authenticated using (is_editor()) with check (is_editor());
+create policy "editors delete statuses" on statuses
+  for delete to authenticated using (is_editor());
+
+create policy "authenticated read bookings" on bookings
+  for select to authenticated using (true);
+create policy "editors write bookings" on bookings
+  for insert to authenticated with check (is_editor());
+create policy "editors update bookings" on bookings
+  for update to authenticated using (is_editor()) with check (is_editor());
+create policy "editors delete bookings" on bookings
+  for delete to authenticated using (is_editor());

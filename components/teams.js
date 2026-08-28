@@ -1,12 +1,23 @@
 // components/teams.js
 import * as api from '../api.supabase.js'
 import { escapeHtml } from './dom.js'
+import { isEditor } from './role.js'
 
 let teams = []
 
 export function initTeams () {
-  setupHandlers()
+  if (isEditor()) {
+    setupHandlers()
+  } else {
+    hideFormForViewer()
+  }
   refreshTeams()
+}
+
+function hideFormForViewer () {
+  const card = document.getElementById('teams-form-card')
+  if (!card) return
+  card.innerHTML = '<div class="card-body text-muted small">Read-only access — you can view teams but not add, edit, or delete them.</div>'
 }
 
 async function refreshTeams () {
@@ -55,14 +66,17 @@ function renderTeamsTable () {
 
   tbody.innerHTML = teams
     .map(t => {
+      const deleteBtn = isEditor()
+        ? `
+          <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete-team">
+            &#128465;
+          </button>
+        `
+        : ''
       return `
         <tr data-team-id="${t.id}">
           <td>${escapeHtml(t.name)}</td>
-          <td class="text-end">
-            <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete-team">
-              &#128465;
-            </button>
-          </td>
+          <td class="text-end">${deleteBtn}</td>
         </tr>
       `
     })

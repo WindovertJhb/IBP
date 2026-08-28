@@ -25,7 +25,13 @@ Supabase (Postgres + Auth), deployable to GitHub Pages for free.
    app's Teams / Sales People tabs instead.
 3. In Supabase → Authentication → Users, create an account for each person
    who needs to sign in (this app gates its whole UI behind Supabase Auth
-   email/password sign-in — there's no self-service signup).
+   email/password sign-in — there's no self-service signup). Every new
+   user defaults to **read-only** access. To make someone an editor
+   (can create/change/delete), run in the SQL editor:
+   ```sql
+   update profiles set role = 'editor'
+   where id = (select id from auth.users where email = 'person@example.com');
+   ```
 4. Copy the project's URL and anon/publishable key (Project Settings → API)
    into `config.js` at the repo root.
 5. Enable GitHub Pages for this repo (Settings → Pages → deploy from the
@@ -38,14 +44,27 @@ relying on it.
 
 ### Upgrading an existing project
 
-If your Supabase project was already provisioned from an older copy of
-`schema.sql` (before the Status tab and "products arrived" checkbox
-existed), run `supabase/add_status_and_products_arrived.sql` once in the
-SQL editor — idempotent, safe to run more than once. It adds the
-`statuses` table and the two new `bookings` columns without touching
-anything else, and seeds two starter statuses (Pre-Programmed / Date
-Confirmed) so the Status tab isn't empty. New projects created from the
-current `schema.sql` already have this.
+Run these once in the SQL editor if your project predates the feature —
+both are idempotent, safe to run more than once. New projects created
+from the current `schema.sql` already have both.
+
+- `supabase/add_status_and_products_arrived.sql` — adds the `statuses`
+  table and the two new `bookings` columns (Status tab, "products
+  arrived" checkbox). Seeds two starter statuses so the tab isn't empty.
+- `supabase/add_user_roles.sql` — adds read-only vs editing users (see
+  below). Every existing login user is backfilled as an editor, so
+  nobody who can already use the app loses access; only users created
+  *after* this runs default to read-only.
+
+### Read-only vs editing users
+
+Every login user is either an **editor** (full access) or a **viewer**
+(read-only — can see the schedule, admin tabs, and open bookings, but
+every create/edit/delete control is hidden). This is enforced by the
+database itself (Row Level Security), not just hidden in the browser, so
+it holds even if someone pokes at the API directly. New users default to
+viewer; flip someone to editor with the SQL snippet in the setup section
+above.
 
 ### Troubleshooting: 403 on every data load after signing in
 

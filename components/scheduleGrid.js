@@ -2,6 +2,7 @@
 import * as api from '../api.supabase.js'
 import { getMonday, addDays, formatDateISO, formatDateShort } from './dateUtils.js'
 import { escapeHtml } from './dom.js'
+import { isEditor } from './role.js'
 
 const START_HOUR = 8
 const END_HOUR = 18
@@ -413,12 +414,12 @@ function renderGrid () {
                 data-time="${slotTime}"
                 rowspan="${cell.rowSpan}"
             >
-                <div class="booking-block" data-booking-id="${b.id}" style="background-color: ${escapeHtml(bgColor)}; color: ${textColor};">
+                <div class="booking-block${isEditor() ? '' : ' booking-block-readonly'}" data-booking-id="${b.id}" style="background-color: ${escapeHtml(bgColor)}; color: ${textColor};">
                 ${b.productsArrived ? '<div class="booking-arrived-badge" title="Products arrived in store">📦</div>' : ''}
                 <div class="booking-line-time">${slotTime}</div>
                 <div class="booking-line-customer">${escapeHtml(customerLabel)}</div>
                 ${metaLine ? `<div class="booking-line-meta">${escapeHtml(metaLine)}</div>` : ''}
-                <div class="booking-resize-handle"></div>
+                ${isEditor() ? '<div class="booking-resize-handle"></div>' : ''}
                 </div>
             </td>
             `
@@ -436,6 +437,7 @@ function renderGrid () {
   })
 
   scheduleGridContainer.innerHTML = html
+  scheduleGridContainer.classList.toggle('viewer-mode', !isEditor())
   attachGridHandlers()
 
   if (viewMode === 'week' && shouldScrollToToday) {
@@ -534,16 +536,18 @@ function attachGridHandlers () {
     }
 
     const slot = e.target.closest('.schedule-slot')
-    if (slot && !dragState) {
+    if (slot && !dragState && isEditor()) {
       const { date, teamId, time } = slot.dataset
       openModalForNew(date, teamId, time)
     }
   }
 
-  const blocks = scheduleGridContainer.querySelectorAll('.booking-block')
-  blocks.forEach(block => {
-    block.addEventListener('mousedown', onBlockMouseDown)
-  })
+  if (isEditor()) {
+    const blocks = scheduleGridContainer.querySelectorAll('.booking-block')
+    blocks.forEach(block => {
+      block.addEventListener('mousedown', onBlockMouseDown)
+    })
+  }
 
   const handles = scheduleGridContainer.querySelectorAll('.booking-resize-handle')
   handles.forEach(handle => {
@@ -1078,6 +1082,26 @@ function updateTeamLabel (teamId) {
   label.textContent = team ? team.name : '—'
 }
 
+// Viewers can open a booking to see its details, but can't change anything
+// — disable every field and hide the buttons that write. This is UI
+// polish only; the real block is server-side RLS.
+function setBookingModalReadOnly (readOnly) {
+  if (!bookingForm) return
+
+  bookingForm.querySelectorAll('input, select, textarea').forEach(el => {
+    el.disabled = readOnly
+  })
+
+  const saveBtn = bookingForm.querySelector('button[type="submit"]')
+  if (saveBtn) saveBtn.classList.toggle('d-none', readOnly)
+
+  const deleteBtn = document.getElementById('btn-delete-booking')
+  if (deleteBtn && readOnly) deleteBtn.classList.add('d-none')
+
+  const readOnlyNote = document.getElementById('booking-readonly-note')
+  if (readOnlyNote) readOnlyNote.classList.toggle('d-none', !readOnly)
+}
+
 function openModalForNew (dateISO, teamId, startTime) {
   const idInput = document.getElementById('booking-id')
   const dateInput = document.getElementById('booking-date')
@@ -1115,6 +1139,7 @@ function openModalForNew (dateISO, teamId, startTime) {
   if (productsArrivedInput) productsArrivedInput.checked = false
 
   updateTeamLabel(teamId)
+  setBookingModalReadOnly(!isEditor())
 
   document.getElementById('bookingModalLabel').textContent = 'New booking'
   updateBookingContactLinks()
@@ -1161,8 +1186,9 @@ function openModalForEdit (booking) {
   if (productsArrivedInput) productsArrivedInput.checked = !!booking.productsArrived
 
   updateTeamLabel(booking.teamId)
+  setBookingModalReadOnly(!isEditor())
 
-  document.getElementById('bookingModalLabel').textContent = 'Edit booking'
+  document.getElementById('bookingModalLabel').textContent = isEditor() ? 'Edit booking' : 'View booking'
   updateBookingContactLinks()
   bookingModal.show()
 }

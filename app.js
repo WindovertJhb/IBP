@@ -3,6 +3,7 @@ import { initScheduleGrid } from './components/scheduleGrid.js'
 import { initTeams } from './components/teams.js'
 import { initStatuses } from './components/statuses.js'
 import { initPeople } from './components/people.js'
+import { loadRole, isEditor } from './components/role.js'
 
 import { supabase, getSession, signInWithPassword, signOut } from './api.supabase.js'
 
@@ -34,8 +35,9 @@ function updateAuthBar (session) {
   const label = document.getElementById('authUserLabel')
   const btn = document.getElementById('btnSignOut')
   const email = session?.user?.email
+  const roleSuffix = email && !isEditor() ? ' (Read-only)' : ''
 
-  if (label) label.textContent = email ? `Signed in: ${email}` : 'Not signed in'
+  if (label) label.textContent = email ? `Signed in: ${email}${roleSuffix}` : 'Not signed in'
   if (btn) btn.classList.toggle('d-none', !email)
 }
 
@@ -47,6 +49,9 @@ async function ensureSignedIn () {
     // ignore; we'll just show the login modal
   }
 
+  if (session) {
+    await loadRole()
+  }
   updateAuthBar(session)
 
   if (session) {
@@ -82,10 +87,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if (btn) btn.disabled = true
       try {
         await signInWithPassword(email, password)
-        await ensureSignedIn()
+        // Full reload rather than re-running ensureSignedIn(): guarantees
+        // every component starts fresh with the right role-based UI,
+        // rather than needing every component to react to a role change
+        // mid-session (which normally never happens on this app anyway).
+        window.location.reload()
       } catch (err) {
         setLoginError(err?.message || 'Unable to sign in.')
-      } finally {
         if (btn) btn.disabled = false
       }
     })
@@ -97,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         await signOut()
       } finally {
-        await ensureSignedIn()
+        window.location.reload()
       }
     })
   }

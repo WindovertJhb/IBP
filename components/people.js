@@ -5,12 +5,23 @@
 // per-job crew assignment. Every row this tab creates is role: 'sales'.
 import * as api from '../api.supabase.js'
 import { escapeHtml } from './dom.js'
+import { isEditor } from './role.js'
 
 let people = []
 
 export function initPeople () {
-  setupHandlers()
+  if (isEditor()) {
+    setupHandlers()
+  } else {
+    hideFormForViewer()
+  }
   refreshPeople()
+}
+
+function hideFormForViewer () {
+  const card = document.getElementById('people-form-card')
+  if (!card) return
+  card.innerHTML = '<div class="card-body text-muted small">Read-only access — you can view salespeople but not add, edit, or delete them.</div>'
 }
 
 async function refreshPeople () {
@@ -61,15 +72,18 @@ function renderPeopleTable () {
   tbody.innerHTML = people
     .map(p => {
       const phone = p.phone || ''
+      const deleteBtn = isEditor()
+        ? `
+          <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete-person">
+            &#128465;
+          </button>
+        `
+        : ''
       return `
         <tr data-person-id="${p.id}">
           <td>${escapeHtml(p.name)}</td>
           <td>${escapeHtml(phone)}</td>
-          <td class="text-end">
-            <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete-person">
-              &#128465;
-            </button>
-          </td>
+          <td class="text-end">${deleteBtn}</td>
         </tr>
       `
     })

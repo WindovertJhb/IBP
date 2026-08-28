@@ -51,6 +51,21 @@ export async function getSession () {
   return unwrap(res).session
 }
 
+// -------------------- profile / role --------------------
+// 'editor' can write, 'viewer' can only read — enforced server-side by
+// RLS (see supabase/schema.sql); this is just so the UI can match.
+
+export async function getMyRole () {
+  const session = await getSession()
+  if (!session) return null
+  const res = await supabase.from('profiles').select('role').eq('id', session.user.id).single()
+  if (res.error) {
+    console.error('Failed to load profile role', res.error)
+    return null
+  }
+  return res.data?.role || null
+}
+
 // -------------------- teams --------------------
 
 function teamToRow (t) {

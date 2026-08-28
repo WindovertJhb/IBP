@@ -1,12 +1,23 @@
 // components/statuses.js
 import * as api from '../api.supabase.js'
 import { escapeHtml } from './dom.js'
+import { isEditor } from './role.js'
 
 let statuses = []
 
 export function initStatuses () {
-  setupHandlers()
+  if (isEditor()) {
+    setupHandlers()
+  } else {
+    hideFormForViewer()
+  }
   refreshStatuses()
+}
+
+function hideFormForViewer () {
+  const card = document.getElementById('status-form-card')
+  if (!card) return
+  card.innerHTML = '<div class="card-body text-muted small">Read-only access — you can view statuses but not add, edit, or delete them.</div>'
 }
 
 async function refreshStatuses () {
@@ -55,17 +66,20 @@ function renderStatusesTable () {
 
   tbody.innerHTML = statuses
     .map(s => {
+      const deleteBtn = isEditor()
+        ? `
+          <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete-status">
+            &#128465;
+          </button>
+        `
+        : ''
       return `
         <tr data-status-id="${s.id}">
           <td>
             <span class="legend-color" style="background-color: ${escapeHtml(s.color)};"></span>
             ${escapeHtml(s.name)}
           </td>
-          <td class="text-end">
-            <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete-status">
-              &#128465;
-            </button>
-          </td>
+          <td class="text-end">${deleteBtn}</td>
         </tr>
       `
     })
