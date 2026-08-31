@@ -328,17 +328,13 @@
 
             <!-- Customer + phone + status -->
             <div class="row g-2 mb-3">
-              <div class="col-md-6">
+              <div class="col-md-8">
                 <label for="booking-customer" class="form-label">Customer name</label>
                 <input type="text" class="form-control form-control-sm" id="booking-customer" />
               </div>
-              <div class="col-md-3">
+              <div class="col-md-4">
                 <label for="booking-phone" class="form-label">Client cell</label>
                 <input type="tel" class="form-control form-control-sm" id="booking-phone" placeholder="e.g. 082 123 4567" />
-              </div>
-              <div class="col-md-3">
-                <label for="booking-email" class="form-label">Client email</label>
-                <input id="booking-email" type="email" class="form-control form-control-sm" placeholder="client@email.com" autocomplete="email" />
               </div>
             </div>
 
@@ -392,15 +388,11 @@
             </div>
 
             <div class="small text-muted me-auto" id="booking-contact-hint">
-              Tip: add a mobile number and/or client email to enable one-click contact.
+              Tip: add a mobile number to enable one-click WhatsApp.
             </div>
 
             <a class="btn btn-success" id="booking-whatsapp-link" href="#" target="_blank" rel="noopener" aria-disabled="true" tabindex="-1">
               💬 WhatsApp
-            </a>
-
-            <a class="btn btn-outline-primary" id="booking-email-link" href="#" aria-disabled="true" tabindex="-1">
-              📧 Email
             </a>
 
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>

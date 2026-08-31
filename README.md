@@ -116,11 +116,11 @@ Then open `http://localhost:8080`.
   set entirely by which column/slot you act on, there's no team picker
   inside the booking modal itself
 - Booking modal: date, team (read-only, shown for context), start time,
-  duration, customer name/phone/email, status, salesperson (mandatory),
+  duration, customer name/phone, status, salesperson (mandatory),
   order number(s), address, products/notes (free text), a "products
   arrived in store" checkbox that shows a 📦 badge on the block
-- One-click WhatsApp (`wa.me`) and Email (`mailto:`) links pre-filled from
-  the booking — manual send, no automation yet (see Phase 2 below)
+- One-click WhatsApp (`wa.me`) link pre-filled from the booking — manual
+  send, no automation yet (see Phase 2 below)
 - Job search by customer name, order number, or client cell, sorted by
   closest date to today
 - Print day → per-team job cards, one team per printed page

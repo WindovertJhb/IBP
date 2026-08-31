@@ -969,7 +969,7 @@ function setupModalHandlers () {
   const modalEl = document.getElementById('bookingModal')
   if (modalEl) modalEl.addEventListener('shown.bs.modal', updateBookingContactLinks)
 
-  for (const id of ['booking-customer', 'booking-phone', 'booking-email', 'booking-date', 'booking-orderNumbers', 'booking-notes', 'booking-address']) {
+  for (const id of ['booking-customer', 'booking-phone', 'booking-date', 'booking-orderNumbers', 'booking-notes', 'booking-address']) {
     const el = document.getElementById(id)
     if (!el) continue
     el.addEventListener('input', updateBookingContactLinks)
@@ -989,7 +989,6 @@ function setupModalHandlers () {
     const statusSelect = document.getElementById('booking-status')
     const addressInput = document.getElementById('booking-address')
     const phoneInput = document.getElementById('booking-phone')
-    const emailInput = document.getElementById('booking-email')
     const orderInput = document.getElementById('booking-orderNumbers')
     const salespersonSelect = document.getElementById('booking-salesperson')
     const productsArrivedInput = document.getElementById('booking-products-arrived')
@@ -1009,7 +1008,6 @@ function setupModalHandlers () {
       statusId: statusSelect ? (statusSelect.value || null) : null,
       address: addressInput ? addressInput.value.trim() : '',
       clientPhone: phoneInput ? phoneInput.value.trim() : '',
-      clientEmail: emailInput ? emailInput.value.trim() : '',
       orderNumbers: orderInput ? orderInput.value.trim() : '',
       salesperson_id: salespersonSelect ? (salespersonSelect.value || null) : null,
       productsArrived: productsArrivedInput ? productsArrivedInput.checked : false
@@ -1117,7 +1115,6 @@ function openModalForNew (dateISO, teamId, startTime) {
   const statusSelect = document.getElementById('booking-status')
   const addressInput = document.getElementById('booking-address')
   const phoneInput = document.getElementById('booking-phone')
-  const emailInput = document.getElementById('booking-email')
   const orderInput = document.getElementById('booking-orderNumbers')
   const salespersonSelect = document.getElementById('booking-salesperson')
   const productsArrivedInput = document.getElementById('booking-products-arrived')
@@ -1135,7 +1132,6 @@ function openModalForNew (dateISO, teamId, startTime) {
   if (statusSelect) statusSelect.value = statuses[0]?.id || ''
   if (addressInput) addressInput.value = ''
   if (phoneInput) phoneInput.value = ''
-  if (emailInput) emailInput.value = ''
   if (orderInput) orderInput.value = ''
   if (salespersonSelect) salespersonSelect.value = ''
   if (productsArrivedInput) productsArrivedInput.checked = false
@@ -1161,7 +1157,6 @@ function openModalForEdit (booking) {
   const statusSelect = document.getElementById('booking-status')
   const addressInput = document.getElementById('booking-address')
   const phoneInput = document.getElementById('booking-phone')
-  const emailInput = document.getElementById('booking-email')
   const orderInput = document.getElementById('booking-orderNumbers')
   const salespersonSelect = document.getElementById('booking-salesperson')
   const productsArrivedInput = document.getElementById('booking-products-arrived')
@@ -1179,7 +1174,6 @@ function openModalForEdit (booking) {
   if (statusSelect) statusSelect.value = booking.statusId != null ? String(booking.statusId) : ''
   if (addressInput) addressInput.value = booking.address || ''
   if (phoneInput) phoneInput.value = booking.clientPhone || ''
-  if (emailInput) emailInput.value = booking.clientEmail || ''
   if (orderInput) orderInput.value = booking.orderNumbers || ''
   if (salespersonSelect) {
     const sp = booking.salesperson_id
@@ -1195,19 +1189,13 @@ function openModalForEdit (booking) {
   bookingModal.show()
 }
 
-/* ---------------- contact actions (Email / WhatsApp) ---------------- */
+/* ---------------- contact actions (WhatsApp) ---------------- */
 //
-// This is the v1 manual fallback: it opens wa.me / mailto with a prefilled
-// message for the user to send by hand. Automated, tracked WhatsApp sends
-// (booking confirmations, day-before reminders, inbound reply logging) are
-// a separate Phase 2 project layered on top of this — see the WhatsApp
+// This is the v1 manual fallback: it opens wa.me with a prefilled message
+// for the user to send by hand. Automated, tracked WhatsApp sends (booking
+// confirmations, day-before reminders, inbound reply logging) are a
+// separate Phase 2 project layered on top of this — see the WhatsApp
 // automation spec. This button stays either way; it's free and useful.
-
-function extractEmailFromText (...parts) {
-  const text = parts.filter(Boolean).join(' ')
-  const m = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)
-  return m ? m[0] : ''
-}
 
 function normalizeWhatsappNumber (raw) {
   if (!raw) return ''
@@ -1238,30 +1226,14 @@ function setLinkEnabled (a, enabled, href) {
 
 function updateBookingContactLinks () {
   const aWa = document.getElementById('booking-whatsapp-link')
-  const aMail = document.getElementById('booking-email-link')
   const hint = document.getElementById('booking-contact-hint')
 
   const customer = document.getElementById('booking-customer')?.value?.trim() || ''
   const phoneRaw = document.getElementById('booking-phone')?.value?.trim() || ''
-  const emailRaw = document.getElementById('booking-email')?.value?.trim() || ''
   const dateIso = document.getElementById('booking-date')?.value || ''
   const orderNumbers = document.getElementById('booking-orderNumbers')?.value?.trim() || ''
-  const notes = document.getElementById('booking-notes')?.value?.trim() || ''
-  const address = document.getElementById('booking-address')?.value?.trim() || ''
 
   const dateStr = dateIso ? formatDateShort(new Date(dateIso)) : 'your booking date'
-  const subject = encodeURIComponent(`Booking: ${customer || 'Client'} (${dateStr})`)
-  const body = encodeURIComponent(
-    `Hi ${customer || ''}${customer ? ',' : ''}\n\n` +
-    `Just following up on your booking scheduled for ${dateStr}.\n` +
-    (orderNumbers ? `Order no(s): ${orderNumbers.replace(/\n+/g, ', ')}\n` : '') +
-    (address ? `Address: ${address}\n` : '') +
-    (notes ? `Notes: ${notes}\n` : '') +
-    '\nThanks,\n'
-  )
-
-  const detectedEmail = extractEmailFromText(notes, address, orderNumbers)
-  const email = emailRaw || detectedEmail
   const waNumber = normalizeWhatsappNumber(phoneRaw)
 
   if (waNumber) {
@@ -1275,18 +1247,10 @@ function updateBookingContactLinks () {
     setLinkEnabled(aWa, false)
   }
 
-  if (email) {
-    setLinkEnabled(aMail, true, `mailto:${email}?subject=${subject}&body=${body}`)
-  } else {
-    // no email on file — still let them open the composer and paste one in
-    setLinkEnabled(aMail, true, `mailto:?subject=${subject}&body=${body}`)
-  }
-
   if (hint) {
     const bits = []
     if (phoneRaw) bits.push(`WhatsApp: ${waNumber || 'invalid number'}`)
-    if (email) bits.push(`Email: ${email}`)
-    if (!phoneRaw && !email) bits.push('Tip: add a mobile number and/or client email to enable one-click contact.')
+    if (!phoneRaw) bits.push('Tip: add a mobile number to enable one-click WhatsApp.')
     hint.textContent = bits.join(' • ')
   }
 }

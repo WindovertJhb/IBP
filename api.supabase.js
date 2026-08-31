@@ -183,7 +183,6 @@ function bookingToRow (b) {
     notes: b.notes,
     address: b.address,
     client_phone: b.clientPhone,
-    client_email: b.clientEmail,
     order_numbers: b.orderNumbers,
     products_arrived: b.productsArrived ?? false,
     salesperson_id: b.salesperson_id ?? null
@@ -208,7 +207,6 @@ function rowToBooking (r) {
     notes: r.notes,
     address: r.address,
     clientPhone: r.client_phone,
-    clientEmail: r.client_email,
     orderNumbers: r.order_numbers,
     productsArrived: r.products_arrived ?? false,
     salesperson_id: r.salesperson_id ?? null
