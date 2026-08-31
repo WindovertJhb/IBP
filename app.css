@@ -13,6 +13,13 @@
   border-bottom: 1px solid #dee2e6;
 }
 
+/* .schedule-toolbar is a flex row, so its children only take the width
+   their own content needs by default. Force the search card onto its
+   own full-width line instead of shrink-wrapping around the input. */
+#jobSearchCard {
+  flex: 1 1 100%;
+}
+
 .schedule-week-label {
   font-weight: 600;
   font-size: 1.15rem;
