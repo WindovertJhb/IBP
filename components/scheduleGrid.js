@@ -1260,9 +1260,6 @@ function updateBookingContactLinks () {
 function buildBookingMetaLine (b) {
   const bits = []
 
-  const status = statuses.find(s => String(s.id) === String(b.statusId))
-  if (status) bits.push(status.name)
-
   const salesperson = b.salesperson_id
   if (salesperson != null && people && people.length) {
     const sp = people.find(p => String(p.id) === String(salesperson))
