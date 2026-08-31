@@ -1269,18 +1269,15 @@ function buildBookingMetaLine (b) {
     if (sp && sp.name) bits.push(`Sales: ${sp.name}`)
   }
 
+  const orderNumbers = (b.orderNumbers || '').split('\n').map(l => l.trim()).filter(Boolean).join(', ')
+  if (orderNumbers) bits.push(`Order: ${orderNumbers}`)
+
   return bits.join(' – ')
 }
 
-// Every non-blank line of Notes, shown as its own line on the block —
-// falls back to the first line of order numbers only when there's no
-// notes at all, matching the old single-line summary's behaviour.
+// Every non-blank line of Notes, shown as its own line on the block.
 function buildBookingNotesLines (b) {
-  const notesLines = (b.notes || '').split('\n').map(l => l.trim()).filter(Boolean)
-  if (notesLines.length) return notesLines
-
-  const orderSummary = (b.orderNumbers || '').split('\n')[0].trim()
-  return orderSummary ? [orderSummary] : []
+  return (b.notes || '').split('\n').map(l => l.trim()).filter(Boolean)
 }
 
 function buildTimeSlots () {
