@@ -269,6 +269,7 @@
 
 .print-jobcard-value {
   flex: 1;
+  white-space: pre-line;
 }
 
 /* Hide app UI when printing, show print sheet instead */

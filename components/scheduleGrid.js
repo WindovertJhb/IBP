@@ -405,6 +405,7 @@ function renderGrid () {
 
           const customerLabel = customerBits.length ? customerBits.join(' | ') : 'Booking'
           const metaLine = buildBookingMetaLine(b)
+          const notesLines = buildBookingNotesLines(b)
 
           html += `
             <td
@@ -419,6 +420,7 @@ function renderGrid () {
                 <div class="booking-line-time">${slotTime}</div>
                 <div class="booking-line-customer">${escapeHtml(customerLabel)}</div>
                 ${metaLine ? `<div class="booking-line-meta">${escapeHtml(metaLine)}</div>` : ''}
+                ${notesLines.map(line => `<div class="booking-line-meta">${escapeHtml(line)}</div>`).join('')}
                 ${isEditor() ? '<div class="booking-resize-handle"></div>' : ''}
                 </div>
             </td>
@@ -1303,15 +1305,18 @@ function buildBookingMetaLine (b) {
     if (sp && sp.name) bits.push(`Sales: ${sp.name}`)
   }
 
-  const notesSummary = (b.notes || '').split('\n')[0].trim()
-  const orderSummary = (b.orderNumbers || '').split('\n')[0].trim()
-  if (notesSummary) {
-    bits.push(notesSummary)
-  } else if (orderSummary) {
-    bits.push(orderSummary)
-  }
-
   return bits.join(' – ')
+}
+
+// Every non-blank line of Notes, shown as its own line on the block —
+// falls back to the first line of order numbers only when there's no
+// notes at all, matching the old single-line summary's behaviour.
+function buildBookingNotesLines (b) {
+  const notesLines = (b.notes || '').split('\n').map(l => l.trim()).filter(Boolean)
+  if (notesLines.length) return notesLines
+
+  const orderSummary = (b.orderNumbers || '').split('\n')[0].trim()
+  return orderSummary ? [orderSummary] : []
 }
 
 function buildTimeSlots () {
