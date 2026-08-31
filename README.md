@@ -45,8 +45,8 @@ relying on it.
 ### Upgrading an existing project
 
 Run these once in the SQL editor if your project predates the feature —
-both are idempotent, safe to run more than once. New projects created
-from the current `schema.sql` already have both.
+all idempotent, safe to run more than once. New projects created from
+the current `schema.sql` already have all of these.
 
 - `supabase/add_status_and_products_arrived.sql` — adds the `statuses`
   table and the two new `bookings` columns (Status tab, "products
@@ -55,6 +55,8 @@ from the current `schema.sql` already have both.
   below). Every existing login user is backfilled as an editor, so
   nobody who can already use the app loses access; only users created
   *after* this runs default to read-only.
+- `supabase/add_scheduled_booking_cleanup.sql` — adds the automatic
+  nightly deletion of bookings older than 3 months (see below).
 
 ### Read-only vs editing users
 
@@ -65,6 +67,23 @@ database itself (Row Level Security), not just hidden in the browser, so
 it holds even if someone pokes at the API directly. New users default to
 viewer; flip someone to editor with the SQL snippet in the setup section
 above.
+
+### Automatic booking cleanup
+
+Bookings older than 3 months (by their `date`) are deleted automatically,
+once a day, so the database doesn't grow forever with completed jobs.
+This runs inside Postgres itself via the `pg_cron` extension — no
+external service, no app code involved, and it keeps running even if
+nobody's signed into the app. To change the cutoff or schedule, edit and
+re-run `supabase/add_scheduled_booking_cleanup.sql` — it's safe to run
+repeatedly. That file also has the queries to check the job's run history
+or turn it off entirely.
+
+**This is a genuine, permanent delete**, and the Free Supabase tier has
+no automatic backups — if you might want old job history later (customer
+disputes, reporting), export the `bookings` table periodically (Table
+Editor → Export) before it automatically ages out, or ask for this to be
+changed to an archive instead of a delete.
 
 ### Troubleshooting: 403 on every data load after signing in
 

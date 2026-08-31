@@ -85,6 +85,20 @@ create trigger bookings_set_updated_at
   for each row
   execute function set_updated_at();
 
+-- ---------- scheduled cleanup ----------
+-- Delete completed bookings older than 3 months, daily, so the database
+-- doesn't grow forever. Runs inside Postgres itself via pg_cron — no
+-- external service. See supabase/add_scheduled_booking_cleanup.sql for
+-- how to change the cutoff/schedule or check on it later.
+
+create extension if not exists pg_cron;
+
+select cron.schedule(
+  'delete-old-bookings',
+  '0 3 * * *', -- every day at 03:00 UTC
+  $$ delete from bookings where date < (current_date - interval '3 months') $$
+);
+
 -- ---------- profiles / user roles ----------
 -- One row per login user (created via Supabase Dashboard → Authentication
 -- → Users — this app has no self-service signup). 'editor' can create,
