@@ -37,6 +37,7 @@ let dragState = null
 const DRAG_THRESHOLD = 4 // pixels before we treat as a drag
 
 let shouldScrollToToday = false
+let editingBooking = null
 
 export function initScheduleGrid () {
   scheduleGridContainer = document.getElementById('scheduleGridContainer')
@@ -1119,6 +1120,8 @@ function openModalForNew (dateISO, teamId, startTime) {
   const salespersonSelect = document.getElementById('booking-salesperson')
   const productsArrivedInput = document.getElementById('booking-products-arrived')
 
+  editingBooking = null
+
   if (idInput) idInput.value = ''
   if (deleteBtn) deleteBtn.classList.add('d-none')
   if (errorEl) errorEl.classList.add('d-none')
@@ -1160,6 +1163,8 @@ function openModalForEdit (booking) {
   const orderInput = document.getElementById('booking-orderNumbers')
   const salespersonSelect = document.getElementById('booking-salesperson')
   const productsArrivedInput = document.getElementById('booking-products-arrived')
+
+  editingBooking = booking
 
   if (idInput) idInput.value = booking.id
   if (deleteBtn) deleteBtn.classList.remove('d-none')
@@ -1228,10 +1233,23 @@ function updateBookingContactLinks () {
   const aWa = document.getElementById('booking-whatsapp-link')
   const hint = document.getElementById('booking-contact-hint')
 
-  const customer = document.getElementById('booking-customer')?.value?.trim() || ''
-  const phoneRaw = document.getElementById('booking-phone')?.value?.trim() || ''
-  const dateIso = document.getElementById('booking-date')?.value || ''
-  const orderNumbers = document.getElementById('booking-orderNumbers')?.value?.trim() || ''
+  // Viewers can't edit the form fields, so read straight from the booking
+  // record rather than the (disabled) inputs — keeps this reliable
+  // regardless of how a given browser reports .value on disabled fields.
+  const useBookingRecord = !isEditor() && editingBooking
+
+  const customer = useBookingRecord
+    ? (editingBooking.customerName || '').trim()
+    : document.getElementById('booking-customer')?.value?.trim() || ''
+  const phoneRaw = useBookingRecord
+    ? (editingBooking.clientPhone || '').trim()
+    : document.getElementById('booking-phone')?.value?.trim() || ''
+  const dateIso = useBookingRecord
+    ? (editingBooking.date || '')
+    : document.getElementById('booking-date')?.value || ''
+  const orderNumbers = useBookingRecord
+    ? (editingBooking.orderNumbers || '').trim()
+    : document.getElementById('booking-orderNumbers')?.value?.trim() || ''
 
   const dateStr = dateIso ? formatDateShort(new Date(dateIso)) : 'your booking date'
   const waNumber = normalizeWhatsappNumber(phoneRaw)
